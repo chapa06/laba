@@ -1,0 +1,688 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ channel_name }} - IoT Дашборд</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+        }
+        
+        .status-dot.offline {
+            background: #dc3545;
+        }
+        
+        .dashboard {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f3f4;
+        }
+        
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .card-icon {
+            font-size: 1.8rem;
+            color: #4facfe;
+        }
+        
+        .value-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            line-height: 1;
+        }
+        
+        .unit {
+            font-size: 1.2rem;
+            color: #6c757d;
+            margin-left: 5px;
+        }
+        
+        .value-label {
+            font-size: 1rem;
+            color: #6c757d;
+            margin-top: 10px;
+        }
+        
+        .chart-container {
+            height: 250px;
+            margin-top: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .last-update {
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-align: center;
+            margin-top: 20px;
+            font-style: italic;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+            border-top: 1px solid #e9ecef;
+            background: #f8f9fa;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .value {
+                font-size: 2.8rem;
+            }
+        }
+        
+        .temperature-hot { color: #ff4757; }
+        .temperature-warm { color: #ffa502; }
+        .temperature-normal { color: #2ed573; }
+        .temperature-cool { color: #1e90ff; }
+        
+        .humidity-high { color: #1e90ff; }
+        .humidity-normal { color: #2ed573; }
+        .humidity-low { color: #ffa502; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-chart-line"></i> {{ channel_name }}</h1>
+            <p>Мониторинг температуры и влажности в реальном времени</p>
+            <p>Канал ID: {{ channel_id }}</p>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Подключение...</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-clock"></i>
+                <span id="lastUpdate">Обновление: --:--:--</span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-satellite-dish"></i>
+                <span>ThingSpeak Channel {{ channel_id }}</span>
+            </div>
+        </div>
+        
+        <div class="dashboard">
+            <!-- Карточка температуры -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-thermometer-half card-icon"></i>
+                        Температура
+                    </div>
+                    <div class="card-actions">
+                        <i class="fas fa-sync-alt" onclick="fetchLatestData()" style="cursor: pointer;"></i>
+                    </div>
+                </div>
+                <div class="value-display">
+                    <div class="value" id="temperatureValue">--</div>
+                    <div class="value-label" id="temperatureStatus">Загрузка...</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Карточка влажности -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-tint card-icon"></i>
+                        Влажность
+                    </div>
+                    <div class="card-actions">
+                        <i class="fas fa-sync-alt" onclick="fetchLatestData()" style="cursor: pointer;"></i>
+                    </div>
+                </div>
+                <div class="value-display">
+                    <div class="value" id="humidityValue">--</div>
+                    <div class="value-label" id="humidityStatus">Загрузка...</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="humidityChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Карточка истории -->
+            <div class="card" style="grid-column: span 2;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-history card-icon"></i>
+                        История данных
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-secondary" onclick="loadHistory(1)">1 час</button>
+                        <button class="btn btn-secondary" onclick="loadHistory(6)">6 часов</button>
+                        <button class="btn btn-secondary" onclick="loadHistory(24)">24 часа</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="combinedChart"></canvas>
+                </div>
+                <div class="last-update">
+                    Данные обновляются автоматически каждые 10 секунд
+                </div>
+            </div>
+            
+            <!-- Карточка последних записей -->
+            <div class="card" style="grid-column: span 2;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-table card-icon"></i>
+                        Последние записи
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-primary" onclick="fetchLatestData(true)">
+                            <i class="fas fa-redo"></i> Обновить
+                        </button>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Температура (°C)</th>
+                            <th>Влажность (%)</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align: center;">Загрузка данных...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>IoT Dashboard v1.0 | Данные с ThingSpeak Channel {{ channel_id }}</p>
+            <p>Последнее обновление: <span id="footerUpdate">--:--:--</span></p>
+        </div>
+    </div>
+    
+    <script>
+        // Глобальные переменные для графиков
+        let temperatureChart = null;
+        let humidityChart = null;
+        let combinedChart = null;
+        let latestData = null;
+        let historyData = [];
+        
+        // Инициализация графиков
+        function initCharts() {
+            // График температуры
+            const tempCtx = document.getElementById('temperatureChart').getContext('2d');
+            temperatureChart = new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Температура (°C)',
+                        data: [],
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: '°C'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // График влажности
+            const humCtx = document.getElementById('humidityChart').getContext('2d');
+            humidityChart = new Chart(humCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Влажность (%)',
+                        data: [],
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: '%'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Комбинированный график
+            const combCtx = document.getElementById('combinedChart').getContext('2d');
+            combinedChart = new Chart(combCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Температура (°C)',
+                            data: [],
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderWidth: 2,
+                            yAxisID: 'y',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Влажность (%)',
+                            data: [],
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 2,
+                            yAxisID: 'y1',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Температура (°C)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Влажность (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Получение последних данных
+        async function fetchLatestData(forceRefresh = false) {
+            try {
+                const response = await fetch('/api/latest');
+                const result = await response.json();
+                
+                if (result.success) {
+                    latestData = result.data;
+                    updateDisplay(latestData);
+                    updateStatus(true);
+                    
+                    // Если нужно обновить историю
+                    if (forceRefresh) {
+                        loadHistory(24);
+                    }
+                } else {
+                    updateStatus(false, result.error);
+                }
+            } catch (error) {
+                updateStatus(false, 'Ошибка сети');
+            }
+        }
+        
+        // Загрузка исторических данных
+        async function loadHistory(hours) {
+            try {
+                const response = await fetch(`/api/history?hours=${hours}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    historyData = result.data;
+                    updateCharts(historyData);
+                    updateDataTable(historyData.slice(-10).reverse());
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки истории:', error);
+            }
+        }
+        
+        // Обновление отображения данных
+        function updateDisplay(data) {
+            const temp = data.temperature;
+            const hum = data.humidity;
+            const time = data.timestamp;
+            
+            // Форматируем время
+            let displayTime = 'Неизвестно';
+            if (time !== 'N/A') {
+                const date = new Date(time);
+                displayTime = date.toLocaleTimeString('ru-RU');
+            }
+            
+            // Обновляем значения
+            const tempElement = document.getElementById('temperatureValue');
+            const humElement = document.getElementById('humidityValue');
+            
+            if (temp !== 'N/A') {
+                tempElement.textContent = temp;
+                tempElement.className = 'value ' + getTemperatureClass(temp);
+                document.getElementById('temperatureStatus').textContent = getTemperatureStatus(temp);
+            }
+            
+            if (hum !== 'N/A') {
+                humElement.textContent = hum;
+                humElement.className = 'value ' + getHumidityClass(hum);
+                document.getElementById('humidityStatus').textContent = getHumidityStatus(hum);
+            }
+            
+            // Обновляем время
+            document.getElementById('lastUpdate').textContent = `Обновление: ${displayTime}`;
+            document.getElementById('footerUpdate').textContent = displayTime;
+        }
+        
+        // Обновление графиков
+        function updateCharts(data) {
+            if (!data || data.length === 0) return;
+            
+            const times = data.map(d => d.time);
+            const temps = data.map(d => d.temperature);
+            const hums = data.map(d => d.humidity);
+            
+            // Обновляем график температуры
+            if (temperatureChart) {
+                temperatureChart.data.labels = times.slice(-30);
+                temperatureChart.data.datasets[0].data = temps.slice(-30);
+                temperatureChart.update('none');
+            }
+            
+            // Обновляем график влажности
+            if (humidityChart) {
+                humidityChart.data.labels = times.slice(-30);
+                humidityChart.data.datasets[0].data = hums.slice(-30);
+                humidityChart.update('none');
+            }
+            
+            // Обновляем комбинированный график
+            if (combinedChart) {
+                combinedChart.data.labels = times;
+                combinedChart.data.datasets[0].data = temps;
+                combinedChart.data.datasets[1].data = hums;
+                combinedChart.update('none');
+            }
+        }
+        
+        // Обновление таблицы данных
+        function updateDataTable(data) {
+            const tableBody = document.getElementById('dataTableBody');
+            tableBody.innerHTML = '';
+            
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${item.full_time || item.time}</td>
+                    <td class="${getTemperatureClass(item.temperature)}">${item.temperature !== null ? item.temperature.toFixed(1) : '--'} °C</td>
+                    <td class="${getHumidityClass(item.humidity)}">${item.humidity !== null ? item.humidity.toFixed(1) : '--'} %</td>
+                    <td>${getStatusIcon(item.temperature, item.humidity)}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Обновление статуса
+        function updateStatus(connected, error = '') {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            if (connected) {
+                statusDot.className = 'status-dot';
+                statusText.textContent = 'Подключено к ThingSpeak';
+            } else {
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = error || 'Нет подключения';
+            }
+        }
+        
+        // Вспомогательные функции
+        function getTemperatureClass(temp) {
+            if (temp >= 30) return 'temperature-hot';
+            if (temp >= 25) return 'temperature-warm';
+            if (temp >= 18) return 'temperature-normal';
+            return 'temperature-cool';
+        }
+        
+        function getHumidityClass(hum) {
+            if (hum >= 70) return 'humidity-high';
+            if (hum >= 40) return 'humidity-normal';
+            return 'humidity-low';
+        }
+        
+        function getTemperatureStatus(temp) {
+            if (temp >= 30) return 'Жарко';
+            if (temp >= 25) return 'Тепло';
+            if (temp >= 18) return 'Нормально';
+            return 'Прохладно';
+        }
+        
+        function getHumidityStatus(hum) {
+            if (hum >= 70) return 'Высокая влажность';
+            if (hum >= 40) return 'Нормальная влажность';
+            return 'Низкая влажность';
+        }
+        
+        function getStatusIcon(temp, hum) {
+            if (temp === null || hum === null) return '❓';
+            
+            if (temp >= 30 || hum >= 80) return '⚠️';
+            if (temp < 15 || hum < 20) return '❄️';
+            return '✅';
+        }
+        
+        // Автоматическое обновление
+        function startAutoRefresh() {
+            // Первоначальная загрузка
+            fetchLatestData();
+            loadHistory(24);
+            
+            // Обновление каждые 10 секунд
+            setInterval(fetchLatestData, 10000);
+            
+            // Обновление истории каждые 5 минут
+            setInterval(() => loadHistory(24), 300000);
+        }
+        
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            startAutoRefresh();
+        });
+    </script>
+</body>
+</html>
