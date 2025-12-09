@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import json
 import csv
 import io
+from bot import USER_SETTINGS, ALERT_SETTINGS, ThingSpeakMonitor
 
 app = Flask(__name__)
 
@@ -257,4 +258,65 @@ if __name__ == '__main__':
     print("Сервер запущен: http://localhost:5000")
     print("="*60)
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+@app.route('/api/telegram/send_test_alert', methods=['POST'])
+def send_test_alert():
+    """Отправка тестового оповещения (для отладки)"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        alert_type = data.get('type', 'temperature')
+        
+        if not user_id:
+            return jsonify({'error': 'User ID required'}), 400
+        
+        # Создаем тестовое оповещение
+        test_alert = {
+            'type': alert_type,
+            'level': 'HIGH',
+            'value': 35 if alert_type == 'temperature' else 85,
+            'limit': 30 if alert_type == 'temperature' else 70,
+            'message': f'ТЕСТ: {"Температура" if alert_type == "temperature" else "Влажность"} выше нормы!',
+            'emoji': '🔥' if alert_type == 'temperature' else '💦',
+            'severity': 'critical'
+        }
+        
+        # Здесь должен быть код отправки через Telegram
+        # Пока возвращаем успех
+        return jsonify({'success': True, 'message': 'Test alert created'})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/telegram/settings')
+def get_telegram_settings():
+    """Получение настроек телеграм-бота"""
+    return jsonify({
+        'user_settings': USER_SETTINGS,
+        'alert_settings': ALERT_SETTINGS,
+        'users_count': len(USER_SETTINGS)
+    })
+
+@app.route('/api/telegram/update_settings', methods=['POST'])
+def update_telegram_settings():
+    """Обновление настроек оповещений из веб-интерфейса"""
+    try:
+        data = request.json
+        
+        # Обновляем настройки температуры
+        if 'temperature_min' in data:
+            ALERT_SETTINGS['temperature']['min'] = float(data['temperature_min'])
+        if 'temperature_max' in data:
+            ALERT_SETTINGS['temperature']['max'] = float(data['temperature_max'])
+        
+        # Обновляем настройки влажности
+        if 'humidity_min' in data:
+            ALERT_SETTINGS['humidity']['min'] = float(data['humidity_min'])
+        if 'humidity_max' in data:
+            ALERT_SETTINGS['humidity']['max'] = float(data['humidity_max'])
+        
+        return jsonify({'success': True, 'settings': ALERT_SETTINGS})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+app.run(debug=True, host='0.0.0.0', port=5000)
